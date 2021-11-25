@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+<!-- template has js/ajax, calls api to search, in the end calls /players POST endpoint with player and team ids -->
+{% block title %}Players{% endblock %}
+{% block navbar %}
+<nav class="nav nav-pills nav-fill">
+    <a class="nav-link" href="/">Matches Dashboard</a>
+    <a class="nav-link active" aria-current="page" href="#">Add/Remove Players</a>
+</nav>
+{% endblock %}
+{% block content %}
+<ul class="list-group list-group">
+    {% for player in players %}
+    <li class="list-group-item d-flex justify-content-between align-items-start">
+        <div class="ms-2 me-auto">
+            <div class="fw-bold">{{ player.name }}</div>
+            {{ player.team_name }}
+        </div>
+        <button type="button" class="btn btn-outline-primary" value="{{ player.id }}" onclick="sendRequest('DELETE', '/players/'+{{ player.id }}, null, afterRemovePlayer)">Remove</button>
+    </li>
+    {% endfor %}
+</ul>
+{% endblock %}

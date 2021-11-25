@@ -1,0 +1,1 @@
+1. account for possible change of lineups until game starts. (=> get lineups again at FT)
