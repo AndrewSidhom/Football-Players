@@ -1,0 +1,11 @@
+1. account for possible change of lineups until game starts. (=> get lineups again at FT)
+2. count everytime a callapi() call is made
+3. Deal with api_calls remaining info on front end
+4. Exceptions. The application shouldn't crash.
+5. New feature: to add all players of a given team
+
+TODO:
+1. flask test library. can it issue http requests?
+    What can you do from the client to cover all possible cases in add_player route? Then simulate server errors.
+    Or add that in improvements.
+2. handle errors from API (when response status code is 200)
