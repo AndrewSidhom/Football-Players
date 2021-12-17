@@ -9,3 +9,10 @@ TODO:
     What can you do from the client to cover all possible cases in add_player route? Then simulate server errors.
     Or add that in improvements.
 2. handle errors from API (when response status code is 200)
+3. player search: validate on client that it's 4+ characters for player and 3+ for team
+4. When we click twice on addPlayer button, the options in the datalist  get added, but the old HTML elements are still there, no?
+5. How to have a select with hundreds of options?
+6. dataflow on frontend a bit different: search box for team. If one of the options, show player search box. If not submit on the right
+ of text box, calls api, callback is show a select of suggestions to confirm choice, submit.
+ Player search box submit, calls api, callback is show a select of suggestions to confirm choice, submit.
+ That's when api add_player is called (with the ids). With afterAddPlayer as response handler.

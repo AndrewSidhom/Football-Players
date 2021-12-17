@@ -21,18 +21,21 @@
     </li>
     {% endfor %}
 </ul>
+
 <br>
-<button type="button" class="btn btn-primary ms-3" onclick="showSearchSection()">Add a Player</button>
-<form id="search-form" onsubmit="searchForPlayer(this)" style="display: none;">
-  <label for="team-to-add" class="form-label">What's the player's team?</label>
-  <input class="form-control" list="teams" name="team-to-add" id="team-to-add">
-  <datalist id="teams">
-<!--<option value="1">Liverpool</option> -->
-  </datalist>
-  <input class="form-control" type="text" id="player-to-add">
-  <input type="submit">
+<button type="button" class="btn btn-primary ms-3" onclick="sendRequest('GET', '/teams/', null, showSearchForm)">Add a Player</button>
+<br>
+
+<form id="search-form" class="ms-3 me-3" onsubmit="searchForPlayer(); return false" style="display: none;">
+  <label for="team-to-search-for" class="form-label mt-2">What's the player's team?</label>
+  <input id="team-to-search-for" class="form-control" list="teams" name="team-to-search-for">
+  <datalist id="teams"></datalist>
+  <label for="player-to-search-for" class="form-label mt-2">What's the name of the player?</label>
+  <input id="player-to-search-for" class="form-control" type="text">
+  <input type="submit" class="mt-2">
 </form>
-<form id="confirm-choice-form">
+
+<form id="confirm-choice-form" class="ms-3">
     <!-- a simple select from finite options form and submit-->
 </form>
 {% endblock %}

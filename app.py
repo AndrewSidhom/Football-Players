@@ -18,26 +18,59 @@ def home():
     return render_template("matches_dashboard.html")
 
 
+# get all teams from db, return json
+@app.route("/teams/", methods=["GET"])
+def teams():
+    all_teams = Team.query.all()
+    teams_list = []
+    for team in all_teams:
+        teams_list.append({"id": team.id_, "name": team.name, "country": team.country})
+    return make_response({"data": {"teams": teams_list}}, 200)
+
+
+@app.route("/teams/search", methods=["GET"])
+def search_for_team():
+    name = request.args.get("name")
+    api_response, api_calls_remaining = call_api('teams?search=' + name)
+    status_code = api_response.status_code
+    if status_code == 200:
+        json_data = api_response.json()['response']
+        payload = []
+        for result in json_data:
+            payload.append({key: result['team'][key] for key in ("id", "name", "country")})
+        return make_response({"result": "Success!",
+                              "detail": "-",
+                              "data": payload}
+                             , 200)
+    else:
+        return make_response({"result": "Failed!",
+                              "detail": "The external API did not respond correctly.",
+                              "api_calls_remaining": api_calls_remaining}
+                             , status_code)
+
+
+# get all players from db, pass them to template
 @app.route("/players/", methods=["GET"])
 def players():
-    # get all players from db, pass them to template
     all_players = Player.query.all()
-    data = []
+    players_list = []
     for player in all_players:
-        data.append({"id": player.id_, "name": player.name, "team_name": player.team.name, "photo": player.photo})
-    return render_template("players.html", players=data)
+        players_list.append({"id": player.id_, "name": player.name, "team_name": player.team.name, "photo": player.photo})
+    return render_template("players.html", players=players_list)
 
 
+# adds the player and his team
+# expected data: player_id, team_id
 @app.route("/players/", methods=["PUT"])
 def add_player():
-    player_id_to_add = request.json["player_id"]
-    team_id_to_add = request.json["team_id"]
     try:
+        player_id_to_add = request.json["player_id"]
+        team_id_to_add = request.json["team_id"]
         player_id_to_add = int(player_id_to_add)
         team_id_to_add = int(team_id_to_add)
-    except ValueError:
+    except (ValueError, KeyError):
         return make_response({"result": "Failed!",
-                              "detail": "Client sent invalid data."}
+                              "detail": "Client sent missing or invalid data (player_id, team_id)."}
                              , 400)
     if not Team.query.filter_by(id_=team_id_to_add).first():
         api_response, api_calls_remaining = call_api('teams?id=' + str(team_id_to_add))
@@ -106,6 +139,33 @@ def remove_player(player_id):
                                         "Try to refresh the page.",
                               "data": {"player_id": player_id}}, 404)
 
+
+@app.route("/players/search", methods=["GET"])
+def search_for_player():
+    team_id = request.args.get("team_id")
+    player_name = request.args.get("player_name")
+    try:
+        team_id = int(team_id)
+    except ValueError:
+        return make_response({"result": "Failed!",
+                              "detail": "Client sent team_id in an incorrect format."}
+                             , 400)
+    api_response, api_calls_remaining = call_api('players?team=' + team_id + '&search=' + player_name)
+    status_code = api_response.status_code
+    if status_code == 200:
+        json_data = api_response.json()['response']
+        payload = []
+        for result in json_data:
+            payload.append({key: result['player'][key] for key in ("id", "name", "nationality")})
+        return make_response({"result": "Success!",
+                              "detail": "-",
+                              "data": payload}
+                             , 200)
+    else:
+        return make_response({"result": "Failed!",
+                              "detail": "The external API did not respond correctly.",
+                              "api_calls_remaining": api_calls_remaining}
+                             , status_code)
 
 @app.route("/test_add_player_to_db/", methods=["GET"])  # args: id, name
 def test_add_player_to_db():

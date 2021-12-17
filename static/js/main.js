@@ -57,16 +57,42 @@ function afterRemovePlayer(request){
     }
 }
 
-function createAlert(){
+function createAlert(type, result, detail){
 
 }
 
-function showSearchSection(){
-    //get all teams, populate datalist, show search-form
+function showSearchForm(request){
+    var allTeams = JSON.parse(request.responseText).data.teams;
+    var datalistInnerHTML = "";
+    for(team of allTeams){
+        datalistInnerHTML += '<option data-value="' + team.id + '" value="' + team.name + ' (' + team.country + ')">\n';
+    }
+    var datalist = document.getElementById("teams");
+    datalist.innerHTML = datalistInnerHTML;
+
+    document.getElementById("search-form").style.display = "block";
 }
 
-function searchForPlayer(form){
-    //you have either a team id or a team name and a player name. Call API. Display message that there is no
+function searchForPlayer(){
+    var teamName = document.getElementById("team-to-search-for").value;
+    var teamId;
+    var knownTeam = document.querySelector('#teams option[value="' + teamName + '"]');
+    if(knownTeam){
+        var teamId = knownTeam.dataset.value;
+    }
+    var playerName = document.getElementById("player-to-search-for").value;
+    var url = "/players/search?player_name=" + playerName;
+    if(teamId){
+        url += "&team_id=" + teamId;
+    }
+    else{
+        url += "&team_name=" + teamName;
+    }
+    sendRequest("GET", url, null, handlePlayerSearchResults);
+}
+
+function handlePlayerSearchResults(request){
+    //Display message that there is no
     //such player for such team. Or if one result, call backend add_player endpoint with afterAddPlayer as the response
     //handler. Or if multiple results, show confirm-choice-form with id of each player as values to the options, and
     //on submit call add_player endpoint with afterAddPlayer as response handler
