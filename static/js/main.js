@@ -58,10 +58,10 @@ function afterRemovePlayer(request){
 }
 
 function createAlert(type, result, detail){
-
+    //TODO
 }
 
-function showSearchForm(request){
+function showSearchSection(request){
     var allTeams = JSON.parse(request.responseText).data.teams;
     var datalistInnerHTML = "";
     for(team of allTeams){
@@ -69,35 +69,52 @@ function showSearchForm(request){
     }
     var datalist = document.getElementById("teams");
     datalist.innerHTML = datalistInnerHTML;
+    document.getElementById("search-section").style.display = "block";
+    document.getElementById("team-search").style.display = "block";
+}
 
-    document.getElementById("search-form").style.display = "block";
+function afterTeamSelection(){
+    var teamName = document.getElementById("team-to-search-for").value;
+    var teamId;
+    var knownTeam = document.querySelector('#teams option[value="' + teamName + '"]'); //True if user-entered team name
+                                                                                       //is in the teams datalist
+    if(knownTeam){
+        var teamId = knownTeam.getAttribute("data-value");
+        var playerSearch = document.getElementById("player-search");
+        playerSearch.style.display = "block";
+    }
+    else{
+        sendRequest("GET", "/teams/search?name="+teamName, null, confirmTeam);
+    }
+    }
+
+function confirmTeam(request){
+    var teams = JSON.parse(request.responseText).data.teams;
+    var selectElement = document.getElementById("teams-for-confirmation");
+    teams.forEach(function(team, index) {
+        var optionElement = document.createElement('option');
+        optionElement.text = team.name + " (" + team.country + ")";
+        optionElement.value = team.id;
+        selectElement.appendChild(optionElement);
+        });
+    teamConfirmationElement = document.getElementById("team-confirmation");
+    teamConfirmationElement.style.display = "block";
 }
 
 function searchForPlayer(){
-    var teamName = document.getElementById("team-to-search-for").value;
-    var teamId;
-    var knownTeam = document.querySelector('#teams option[value="' + teamName + '"]');
-    if(knownTeam){
-        var teamId = knownTeam.dataset.value;
-    }
+    var selectElement = document.getElementById("teams-for-confirmation");
+    teamId = selectElement.value;
     var playerName = document.getElementById("player-to-search-for").value;
-    var url = "/players/search?player_name=" + playerName;
-    if(teamId){
-        url += "&team_id=" + teamId;
-    }
-    else{
-        url += "&team_name=" + teamName;
-    }
+    var url = "/players/search?player_name=" + playerName + "&team_id=" + teamId;
     sendRequest("GET", url, null, handlePlayerSearchResults);
 }
 
 function handlePlayerSearchResults(request){
-    //Display message that there is no
-    //such player for such team. Or if one result, call backend add_player endpoint with afterAddPlayer as the response
-    //handler. Or if multiple results, show confirm-choice-form with id of each player as values to the options, and
-    //on submit call add_player endpoint with afterAddPlayer as response handler
+    //TODO: Display message that there is no such player for such team.
+    //TODO: Or if one result, call backend add_player endpoint with afterAddPlayer as the response handler.
+    //TODO: Or if multiple results, show player-confirmation with select with id and names of players
 }
 
 function afterAddPlayer(request){
-
+    //TODO: Fail or success message, add to players html list if success
 }

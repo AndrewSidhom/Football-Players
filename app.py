@@ -18,6 +18,10 @@ def home():
     return render_template("matches_dashboard.html")
 
 
+#####################################################################################################################
+# TEAMS #
+###########
+
 # get all teams from db, return json
 @app.route("/teams/", methods=["GET"])
 def teams():
@@ -35,18 +39,22 @@ def search_for_team():
     status_code = api_response.status_code
     if status_code == 200:
         json_data = api_response.json()['response']
-        payload = []
+        teams_list = []
         for result in json_data:
-            payload.append({key: result['team'][key] for key in ("id", "name", "country")})
+            teams_list.append({key: result['team'][key] for key in ("id", "name", "country")})
         return make_response({"result": "Success!",
                               "detail": "-",
-                              "data": payload}
+                              "data": {"teams": teams_list}}
                              , 200)
     else:
         return make_response({"result": "Failed!",
                               "detail": "The external API did not respond correctly.",
                               "api_calls_remaining": api_calls_remaining}
                              , status_code)
+
+#####################################################################################################################
+# PLAYERS #
+###########
 
 
 # get all players from db, pass them to template
@@ -167,6 +175,7 @@ def search_for_player():
                               "api_calls_remaining": api_calls_remaining}
                              , status_code)
 
+
 @app.route("/test_add_player_to_db/", methods=["GET"])  # args: id, name
 def test_add_player_to_db():
     player_id = int(request.args.get("id"))
@@ -192,6 +201,9 @@ def test_add_player_from_api():
     message = "Status Code: " + str(response.status_code) + "\nResult: " + response.json()['result'] + "\nDetail: " \
               + response.json()['detail']
     return render_template("message.html", message=message)
+
+
+#####################################################################################################################
 
 
 if __name__ == "__main__":

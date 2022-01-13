@@ -23,17 +23,31 @@
 </ul>
 
 <br>
-<button type="button" class="btn btn-primary ms-3" onclick="sendRequest('GET', '/teams/', null, showSearchForm)">Add a Player</button>
+<button type="button" class="btn btn-primary ms-3" onclick="sendRequest('GET', '/teams/', null, showSearchSection)">Add a Player</button>
 <br>
 
-<form id="search-form" class="ms-3 me-3" onsubmit="searchForPlayer(); return false" style="display: none;">
-  <label for="team-to-search-for" class="form-label mt-2">What's the player's team?</label>
-  <input id="team-to-search-for" class="form-control" list="teams" name="team-to-search-for">
-  <datalist id="teams"></datalist>
-  <label for="player-to-search-for" class="form-label mt-2">What's the name of the player?</label>
-  <input id="player-to-search-for" class="form-control" type="text">
-  <input type="submit" class="mt-2">
-</form>
+<div id="search-section" class="ms-3 me-3" style="width: 25%; display: none;">
+    <div id="team-search" style="display: none;">
+        <label for="team-to-search-for" class="form-label mt-2">What's the player's team?</label>
+        <input id="team-to-search-for" class="form-control" list="teams" name="team-to-search-for">
+        <datalist id="teams"></datalist>
+        <button type="button" class="btn btn-primary" onclick="afterTeamSelection()">Submit</button>
+    </div>
+    <div id="team-confirmation" style="display: none;">
+        <label for="teams-for-confirmation">Please confirm the team from the following list:</label>
+        <select id="teams-for-confirmation"></select>
+        <button type="button" class="btn btn-primary" onclick="document.getElementById('player-search').style.display = 'block'">Submit</button>
+    </div>
+    <div id="player-search" style="display: none;">
+        <label for="player-to-search-for" class="form-label mt-2">What's the name of the player?</label>
+        <input id="player-to-search-for" class="form-control" type="text">
+        <button type="button" class="btn btn-primary" onclick="searchForPlayer()">Submit</button>
+    </div>
+    <div id="player-confirmation" style="display: none;">
+<!-- TODO: select and button. On button click, call add_player endpoint with team id, player id (or through a js function) -->
+<!-- TODO: with afterAddPlayer as response handler -->
+    </div>
+</div>
 
 <form id="confirm-choice-form" class="ms-3">
     <!-- a simple select from finite options form and submit-->
