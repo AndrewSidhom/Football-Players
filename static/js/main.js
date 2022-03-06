@@ -1,3 +1,6 @@
+// UTILS:
+
+// data has to be in JSON format
 function sendRequest(method, requestUrl, data, responseHandler){
     if(typeof method != "string"){
         console.log("Invalid HTTP method. Cannot initiate AJAX request");
@@ -19,102 +22,162 @@ function sendRequest(method, requestUrl, data, responseHandler){
                             responseHandler(request);
                     }
                 request.open(method, requestUrl, true);
-                request.send(data);
+                request.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+                request.send(JSON.stringify(data));
             }
         }
     }
 }
 
-//alert the user whether removal failed or succeeded, and in the latter case, remove the player element from the DOM
-function afterRemovePlayer(request){
-    var json_response = JSON.parse(request.responseText);
-    var player_id = json_response.data.player_id;
-    var result = json_response.result;
-    var detail = json_response.detail;
-    var playerNode = document.getElementById("player-id-" + player_id);
-    if(request.status == 404 || request.status == 500){
-        var newElement = ['<div class="alert alert-danger alert-dismissible fade show" role="alert">',
-            '<strong>' + result + '</strong>  ' + detail,
-            '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>',
-            '</div>'].join('\n');
-        playerNode.insertAdjacentHTML('afterend', newElement);
+function generateAlert(type, result, detail){
+    if(type == "danger" || type == "success" || type=="info"){
+        return ['<div class="alert alert-' + type + ' alert-dismissible fade show" role="alert">',
+                '<strong>' + result + '</strong>  ' + detail,
+                '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>',
+                '</div>'].join('\n');
     }
-    else if(request.status == 200){
-        playerNode.remove();
-        var playersListNode = document.getElementById("players-list");
-        var newElement = ['<div class="alert alert-success alert-dismissible fade show" role="alert">',
-            '<strong>' + result + '</strong>  ' + detail,
-            '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>',
-            '</div>'].join('\n');
-        playersListNode.insertAdjacentHTML('beforebegin', newElement);
+}
+
+function validateResponse(response){
+    var contentNode = document.getElementById("content");
+    var result, detail, alert;
+    var goodResponse = false;
+    try{
+        var jsonResponse = JSON.parse(response.responseText);
+        result = jsonResponse.result;
+        detail = jsonResponse.detail;
+        if(response.status == 200){
+            goodResponse = true;
+        }
+        else{
+            alert = generateAlert("danger", result, detail);
+        }
+    }
+    catch(e){
+        result = "Failed!";
+        detail = "Status code: " + response.status + ". Refresh and try again."
+        alert = generateAlert("danger", result, detail);
+    }
+    if (goodResponse){
+        return jsonResponse;
     }
     else{
-        var newElement = ['<div class="alert alert-danger alert-dismissible fade show" role="alert">',
-            '<strong>Failed!  </strong>Status code: ' + request.status + '. Refresh and try again.',
-            '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>',
-            '</div>'].join('\n');
-        playerNode.insertAdjacentHTML('afterend', newElement);
+        contentNode.insertAdjacentHTML('beforebegin', alert);
+        window.location.href = "#content";
+        return null;
     }
 }
 
-function createAlert(type, result, detail){
-    //TODO
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+function afterRemovePlayer(response){
+    var jsonResponse = validateResponse(response);
+    if(jsonResponse){
+        playerId = jsonResponse.data.player_id;
+        playerNode = document.getElementById("player-id" + playerId);
+        playerNode.remove();
+        var alert = generateAlert("success", jsonResponse.result, jsonResponse.detail);
+        document.getElementById("content").insertAdjacentHTML('beforebegin', alert);
+        window.location.href = "#content";
+    }
 }
 
-function showSearchSection(request){
-    var allTeams = JSON.parse(request.responseText).data.teams;
-    var datalistInnerHTML = "";
-    for(team of allTeams){
-        datalistInnerHTML += '<option data-value="' + team.id + '" value="' + team.name + ' (' + team.country + ')">\n';
+function showSearchSection(response){
+    var jsonResponse = validateResponse(response);
+    if(jsonResponse){
+        var allTeams = jsonResponse.data.teams;
+        var datalistInnerHTML = "";
+        for(team of allTeams){
+            datalistInnerHTML += '<option data-value="' + team.id + '" value="' + team.name + ' (' + team.country + ')">\n';
+        }
+        var datalist = document.getElementById("teams");
+        datalist.innerHTML = datalistInnerHTML;
+        document.getElementById("search-section").style.display = "block";
+        document.getElementById("team-search").style.display = "block";
     }
-    var datalist = document.getElementById("teams");
-    datalist.innerHTML = datalistInnerHTML;
-    document.getElementById("search-section").style.display = "block";
-    document.getElementById("team-search").style.display = "block";
 }
 
 function afterTeamSelection(){
     var teamName = document.getElementById("team-to-search-for").value;
     var teamId;
-    var knownTeam = document.querySelector('#teams option[value="' + teamName + '"]'); //True if user-entered team name
-                                                                                       //is in the teams datalist
+    var knownTeam = document.querySelector('#teams option[value="' + teamName + '"]'); //not null if user-entered team
+                                                                                       //name is in the teams datalist
     if(knownTeam){
         var teamId = knownTeam.getAttribute("data-value");
+        var teamToConfirmNode = document.getElementById("team-to-confirm");
+        var optionNode = document.createElement("option")
+        optionNode.value = teamId;
+        teamToConfirmNode.appendChild(optionNode)
+        teamToConfirmNode.value = teamId;
         var playerSearch = document.getElementById("player-search");
         playerSearch.style.display = "block";
     }
     else{
-        sendRequest("GET", "/teams/search?name="+teamName, null, confirmTeam);
+        sendRequest("GET", "/teams/search?name="+teamName, null, handleTeamSearchResults);
     }
     }
 
-function confirmTeam(request){
-    var teams = JSON.parse(request.responseText).data.teams;
-    var selectElement = document.getElementById("teams-for-confirmation");
-    teams.forEach(function(team, index) {
-        var optionElement = document.createElement('option');
-        optionElement.text = team.name + " (" + team.country + ")";
-        optionElement.value = team.id;
-        selectElement.appendChild(optionElement);
+function handleTeamSearchResults(response){
+    var jsonResponse = validateResponse(response);
+    if(jsonResponse){
+        var teams = jsonResponse.data.teams;
+        var selectNode = document.getElementById("team-to-confirm");
+        teams.forEach(function(team, index){
+            var optionNode = document.createElement("option");
+            optionNode.value = team.id;
+            optionNode.text = team.name + " (" + team.country + ")";
+            selectNode.appendChild(optionNode);
         });
-    teamConfirmationElement = document.getElementById("team-confirmation");
-    teamConfirmationElement.style.display = "block";
+        document.getElementById("team-confirmation").style.display = "block";
+    }
 }
 
 function searchForPlayer(){
-    var selectElement = document.getElementById("teams-for-confirmation");
-    teamId = selectElement.value;
+    var teamId = document.getElementById("team-to-confirm").value;
     var playerName = document.getElementById("player-to-search-for").value;
     var url = "/players/search?player_name=" + playerName + "&team_id=" + teamId;
     sendRequest("GET", url, null, handlePlayerSearchResults);
 }
 
-function handlePlayerSearchResults(request){
-    //TODO: Display message that there is no such player for such team.
-    //TODO: Or if one result, call backend add_player endpoint with afterAddPlayer as the response handler.
-    //TODO: Or if multiple results, show player-confirmation with select with id and names of players
+function handlePlayerSearchResults(response){
+    var jsonResponse = validateResponse(response);
+    if(jsonResponse){
+        var players = jsonResponse.data.players;
+        if(players === undefined || players.length == 0){
+            var alert = generateAlert("danger", "Failed!", "There is no such player who plays for such a team");
+            document.getElementById("content").insertAdjacentHTML('beforebegin', alert);
+            window.location.href = "#content";
+        }
+        else{
+            selectNode = document.getElementById("player-to-confirm");
+            players.forEach(function(player, index){
+                var optionNode = document.createElement("option");
+                optionNode.value = player.id;
+                optionNode.text = player.name + " (" + player.nationality + ", " + player.team_name + ")";
+                selectNode.appendChild(optionNode);
+            });
+            document.getElementById("player-confirmation").style.display = "block";
+        }
+    }
 }
 
-function afterAddPlayer(request){
-    //TODO: Fail or success message, add to players html list if success
+function addPlayer(){
+    teamId = document.getElementById("team-to-confirm").value;
+    console.log("Team id to send" + document.getElementById("team-to-confirm").value);
+    playerId = document.getElementById("player-to-confirm").value;
+    console.log("Player id to send" + document.getElementById("player-to-confirm").value);
+    sendRequest("PUT", "/players/", {"player_id": playerId, "team_id": teamId}, afterAddPlayer);
+}
+
+function afterAddPlayer(response){
+    var jsonResponse = validateResponse(response);
+    if(jsonResponse){
+        var result = jsonResponse.result;
+        var detail = jsonResponse.detail + ' They\'ll appear in the below list upon <a href="/players">refreshing</a>.';
+        var alert = generateAlert("success", result, detail);
+        document.getElementById("content").insertAdjacentHTML('beforebegin', alert);
+        window.location.href = "#content";
+    }
 }

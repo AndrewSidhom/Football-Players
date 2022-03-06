@@ -32,25 +32,52 @@ def teams():
     return make_response({"data": {"teams": teams_list}}, 200)
 
 
+@app.route("/teams/", methods=["PUT"])
+def add_team(team_id):
+    if Team.query.filter_by(id_=team_id).first():  # if team is already in our database
+        return make_response({"result": "Info!",
+                              "detail": "The team already existed in the database.",
+                              "api_calls_remaining": None}
+                             , 200)
+    else:  # look up the team and attempt to add it
+        api_response, api_calls_remaining = call_api('teams?id=' + str(team_id))
+        status_code = api_response.status_code
+        if status_code != 200 or api_response.json()["errors"]:
+            return make_response({"result": "Failed!",
+                                  "detail": "The external API did not respond correctly.",
+                                  "api_calls_remaining": api_calls_remaining}
+                                 , status_code)
+        else:
+            team_info = api_response.json()['response'][0]['team']
+            team = Team(team_info['id'], team_info['name'], team_info['country'], team_info['logo'])
+            db.session.add(team)
+            db.session.commit()
+            return make_response({"result": "Success!",
+                                  "detail": "The team was added.",
+                                  "api_calls_remaining": api_calls_remaining}
+                                 , 200)
+
+
 @app.route("/teams/search", methods=["GET"])
 def search_for_team():
     name = request.args.get("name")
     api_response, api_calls_remaining = call_api('teams?search=' + name)
     status_code = api_response.status_code
-    if status_code == 200:
+    if status_code != 200 or api_response.json()["errors"]:
+        return make_response({"result": "Failed!",
+                              "detail": "The external API did not respond correctly.",
+                              "api_calls_remaining": api_calls_remaining}
+                             , status_code)
+    else:
         json_data = api_response.json()['response']
         teams_list = []
         for result in json_data:
             teams_list.append({key: result['team'][key] for key in ("id", "name", "country")})
         return make_response({"result": "Success!",
                               "detail": "-",
-                              "data": {"teams": teams_list}}
-                             , 200)
-    else:
-        return make_response({"result": "Failed!",
-                              "detail": "The external API did not respond correctly.",
+                              "data": {"teams": teams_list},
                               "api_calls_remaining": api_calls_remaining}
-                             , status_code)
+                             , 200)
 
 #####################################################################################################################
 # PLAYERS #
@@ -72,59 +99,56 @@ def players():
 @app.route("/players/", methods=["PUT"])
 def add_player():
     try:
-        player_id_to_add = request.json["player_id"]
-        team_id_to_add = request.json["team_id"]
-        player_id_to_add = int(player_id_to_add)
-        team_id_to_add = int(team_id_to_add)
+        player_id_to_add = int(request.json["player_id"])
+        team_id_to_add = int(request.json["team_id"])
     except (ValueError, KeyError):
         return make_response({"result": "Failed!",
-                              "detail": "Client sent missing or invalid data (player_id, team_id)."}
+                              "detail": "Client sent missing or invalid data (player_id, team_id).",
+                              "api_calls_remaining": None}
                              , 400)
-    if not Team.query.filter_by(id_=team_id_to_add).first():
-        api_response, api_calls_remaining = call_api('teams?id=' + str(team_id_to_add))
-        status_code = api_response.status_code
-        if status_code == 200:
-            team_info = api_response.json()['response'][0]['team']
-            team = Team(team_info['id'], team_info['name'], team_info['country'], team_info['logo'])
-            db.session.add(team)
-        else:
-            return make_response({"result": "Failed!",
-                                  "detail": "The external API did not respond correctly.",
-                                  "api_calls_remaining": api_calls_remaining}
-                                 , status_code)
-    if not Player.query.filter_by(id_=player_id_to_add).first():
-        api_response, api_calls_remaining = call_api('players?id=' + str(player_id_to_add)
-                                                     + '&season=' + str(datetime.date.today().year))
-        status_code = api_response.status_code
-        if status_code == 200:
-            json_response = api_response.json()['response'][0]
-            player_info = json_response['player']
-            player_stats = json_response['statistics'][0]
-            id_ = player_info['id']
-            name = player_info['name']
-            birthdate = datetime.datetime.strptime(player_info['birth']['date'], "%Y-%m-%d").date()
-            nationality = player_info['nationality']
-            injured = player_info['injured']
-            photo = player_info['photo']
-            team_id = player_stats['team']['id']
-            if team_id != team_id_to_add:
+    response = add_team(team_id_to_add)  # a Flask Response object, not a Requests response object
+    if response.status_code != 200 or response.get_json()["result"] not in ["Success!", "Info!"]:
+        return response
+    else:  # team was successfully added or already existed
+        if Player.query.filter_by(id_=player_id_to_add).first():
+            return make_response({"result": "Info!",
+                                  "detail": "The player already existed in the database.",
+                                  "api_calls_remaining": response.get_json()["api_calls_remaining"]}
+                                 , 200)
+        else:  # team doesn't already exist in our db, look it up on API and attempt to add it
+            api_response, api_calls_remaining = call_api('players?id=' + str(player_id_to_add)
+                                                         + 'team=' + str(team_id_to_add)
+                                                         + '&season=' + str(datetime.date.today().year))
+            status_code = api_response.status_code
+            if status_code != 200 or api_response.json()["errors"]:
                 return make_response({"result": "Failed!",
-                                     "detail": "The player and his team which the client requested to add are "
-                                               "inconsistent. This player does not play for this team.",
+                                      "detail": "The external API did not respond correctly.",
                                       "api_calls_remaining": api_calls_remaining}
-                                     , 404)
-            player = Player(id_, name, birthdate, nationality, injured, photo, team_id)
-            db.session.add(player)
-        else:
-            return make_response({"result": "Failed!",
-                                  "detail": "The external API did not respond correctly.",
-                                  "api_calls_remaining": api_calls_remaining}
-                                 , status_code)
-    db.session.commit()
-    return make_response({"result": "Success!",
-                          "detail": "The player and his team were added.",
-                          "api_calls_remaining": api_calls_remaining}
-                         , 200)
+                                     , status_code)
+            else:
+                json_response = api_response.json()['response']
+                if not json_response:
+                    return make_response({"result": "Failed!",
+                                         "detail": "The player and his team which the client requested to add are "
+                                                   "inconsistent. This player does not play for this team.",
+                                          "api_calls_remaining": api_calls_remaining}
+                                         , 404)
+                else:
+                    json_response = json_response[0]  # there's just one result because we uses the player id
+                    player_info = json_response['player']
+                    id_ = player_info['id']
+                    name = player_info['name']
+                    birthdate = datetime.datetime.strptime(player_info['birth']['date'], "%Y-%m-%d").date()
+                    nationality = player_info['nationality']
+                    injured = player_info['injured']
+                    photo = player_info['photo']
+                    player = Player(id_, name, birthdate, nationality, injured, photo, team_id_to_add)
+                    db.session.add(player)
+                    db.session.commit()
+                    return make_response({"result": "Success!",
+                                          "detail": "The player and his team were added.",
+                                          "api_calls_remaining": api_calls_remaining}
+                                         , 200)
 
 
 @app.route("/players/<int:player_id>", methods=["DELETE"])
@@ -136,16 +160,22 @@ def remove_player(player_id):
         if Player.query.filter_by(id_=player_id).first():
             return make_response({"result": "Failed!",
                                   "detail": "Could not remove the player due to a server-side issue.",
-                                  "data": {"player_id": player_id}}, 500)
+                                  "data": {"player_id": player_id},
+                                  "api_calls_remaining": None}
+                                 , 500)
         else:
             return make_response({"result": "Success!",
                                   "detail": "Player was removed.",
-                                  "data": {"player_id": player_id}}, 200)
+                                  "data": {"player_id": player_id},
+                                  "api_calls_remaining": None}
+                                 , 200)
     else:
         return make_response({"result": "Failed!",
                               "detail": "Attempt by client to remove a player with an id that does not exist. "
                                         "Try to refresh the page.",
-                              "data": {"player_id": player_id}}, 404)
+                              "data": {"player_id": player_id},
+                              "api_calls_remaining": None}
+                             , 404)
 
 
 @app.route("/players/search", methods=["GET"])
@@ -156,24 +186,28 @@ def search_for_player():
         team_id = int(team_id)
     except ValueError:
         return make_response({"result": "Failed!",
-                              "detail": "Client sent team_id in an incorrect format."}
+                              "detail": "Client sent team_id in an incorrect format.",
+                              "api_calls_remaining": None}
                              , 400)
-    api_response, api_calls_remaining = call_api('players?team=' + team_id + '&search=' + player_name)
+    api_response, api_calls_remaining = call_api('players?team=' + str(team_id) + '&search=' + player_name)
     status_code = api_response.status_code
-    if status_code == 200:
-        json_data = api_response.json()['response']
-        payload = []
-        for result in json_data:
-            payload.append({key: result['player'][key] for key in ("id", "name", "nationality")})
-        return make_response({"result": "Success!",
-                              "detail": "-",
-                              "data": payload}
-                             , 200)
-    else:
+    if status_code != 200 or api_response.json()["errors"]:
         return make_response({"result": "Failed!",
                               "detail": "The external API did not respond correctly.",
                               "api_calls_remaining": api_calls_remaining}
                              , status_code)
+    else:
+        json_data = api_response.json()['response']
+        players_list = []
+        for result in json_data:
+            player = {key: result['player'][key] for key in ("id", "name", "nationality")}
+            player["team_name"] = Team.query.filter_by(id_=team_id).first().name
+            players_list.append(player)
+        return make_response({"result": "Success!",
+                              "detail": "-",
+                              "data": {"players": players_list},
+                              "api_calls_remaining": api_calls_remaining}
+                             , 200)
 
 
 @app.route("/test_add_player_to_db/", methods=["GET"])  # args: id, name

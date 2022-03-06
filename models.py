@@ -42,13 +42,15 @@ class Fixture(db.Model):
                            backref=db.backref("fixtures", lazy=True))
     datetime = db.Column(db.DateTime)
     status = db.Column(db.String(25))  # "BeforeLineups , "LineupsIn", "FT"
+    competition = db.Column(db.String(50))
 
-    def __init__(self, id_, home_team_id, away_team_id, datetime, status):
+    def __init__(self, id_, home_team_id, away_team_id, datetime, status, competition):
         self.id_ = id_
         self.home_team_id = home_team_id
         self.away_team_id = away_team_id
         self.datetime = datetime
         self.status = status
+        self.competition = competition
 
 
 class Event(db.Model):

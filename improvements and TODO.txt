@@ -1,21 +1,38 @@
-1. account for possible change of lineups until game starts. (=> get lineups again at FT)
-2. count everytime a callapi() call is made
-3. Deal with api_calls remaining info on front end
-4. Exceptions. The application shouldn't crash.
-5. New feature: to add all players of a given team
+TODO next steps in development:
+1. add_player: We're doing clubs only fixtures/teams. Figure out how to set the team's current season value depending on the time of year. Maybe season/league info is available on API about start and end date.
+2. Continue testing adding a player. Test all cases (not tested after refactoring by decoupling add_team from add_player that calls it.
 
-TODO:
+TODO at some point:
 1. flask test library. can it issue http requests?
     What can you do from the client to cover all possible cases in add_player route? Then simulate server errors.
     Or add that in improvements.
-2. handle errors from API (when response status code is 200)
-3. player search: validate on client that it's 4+ characters for player and 3+ for team
-4. When we click twice on addPlayer button, the options in the datalist  get added, but the old HTML elements are still there, no?
-5. endpoints that need request params return error if nothing
+2. player search: validate on client that it's 4+ characters for player and 3+ for team
+3. When we click twice on addPlayer button, the options in the datalist  get added, but the old HTML elements are still there, no?
+4. endpoints that need request params return error if nothing
+5. Currently add_team logic is embedded in add_player endpoint. Decouple? Question: How do we make sure we have no teams we're keeping track of that are devoid of players.
+6. Deal with api_calls_remaining info on front end. Flask global variable.
 
-5. How to have a select with hundreds of options?
+TODO new features, improvements:
+1. account for possible change of lineups until game starts. (=> get lineups again at FT)
+2. Exceptions. The application shouldn't crash.
+3. New feature: to add all players of a given team
+4. For player search, have a select like for team search. Maybe the player is already in our database.
+5. To enable functionality for countries as teams in addition to clubs:
+    - add to team model: is_national
+    - In player model: club_team and country_team
+    - Send both club_team and country_team in player info to front end in get_player(s) (in the all players template and in add Player section)
+    - when adding a player, would also make a call to note both his teams (see "For a player's associated teams" below), then get both teams' info
+    - when getting a player's info, get it for either of their teams (as check that such player for such team exists),
+        with its season depending on if it's a national team (current year) or club team (year before if in first half of the year)
+    - when getting a team's fixtures, if a NT, make sure the list of players associated with that team are still associated with the team as NT squads change.
 
-6. dataflow on frontend a bit different: search box for team. If one of the options, show player search box. If not submit on the right
- of text box, calls api, callback is show a select of suggestions to confirm choice, submit.
- Player search box submit, calls api, callback is show a select of suggestions to confirm choice, submit.
- That's when api add_player is called (with the ids). With afterAddPlayer as response handler.
+
+When searching for fixtures, we'll do
+ https://api-football-v1.p.rapidapi.com/v3/fixtures?team=40&season=2021&from=YYYY-MM-DD&to=YYYY-MM-DD
+ or
+ https://api-football-v1.p.rapidapi.com/v3/fixtures?team=40&season=2021&last=2&next=2
+
+
+For a player's associated teams, we'll do:
+https://api-football-v1.p.rapidapi.com/v3/players/squads?player=306
+(but it doesn't include in team info which is national, which is not)
