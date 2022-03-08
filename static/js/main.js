@@ -99,14 +99,17 @@ function showSearchSection(response){
     }
 }
 
+//if team is unknown, search for it; if it's known, set it as the value of <select id="team-to-confirm">
+// next step: show player-search or go to handleTeamSearchResults()
 function afterTeamSelection(){
+    var teamInputNode = document.getElementById("team-to-search-for");
+    teamInputNode.addAttribute("disabled", "");
     var teamName = document.getElementById("team-to-search-for").value;
-    var teamId;
     var knownTeam = document.querySelector('#teams option[value="' + teamName + '"]'); //not null if user-entered team
                                                                                        //name is in the teams datalist
     if(knownTeam){
         var teamId = knownTeam.getAttribute("data-value");
-        var teamToConfirmNode = document.getElementById("team-to-confirm");
+        var teamToConfirmNode = document.getElementById("team-to-confirm"); //the <select> element
         var optionNode = document.createElement("option")
         optionNode.value = teamId;
         teamToConfirmNode.appendChild(optionNode)
@@ -115,10 +118,12 @@ function afterTeamSelection(){
         playerSearch.style.display = "block";
     }
     else{
-        sendRequest("GET", "/teams/search?name="+teamName, null, handleTeamSearchResults);
+        sendRequest("GET", "/teams/search?name=" + teamName, null, handleTeamSearchResults);
     }
-    }
+}
 
+//populate <select id="team-to-confirm"> with teams as options
+//next step: show team-confirmation
 function handleTeamSearchResults(response){
     var jsonResponse = validateResponse(response);
     if(jsonResponse){
@@ -134,6 +139,8 @@ function handleTeamSearchResults(response){
     }
 }
 
+//request to backend to search for player with teamId, playerName
+//next step: go to handleSearchResults()
 function searchForPlayer(){
     var teamId = document.getElementById("team-to-confirm").value;
     var playerName = document.getElementById("player-to-search-for").value;
@@ -141,6 +148,8 @@ function searchForPlayer(){
     sendRequest("GET", url, null, handlePlayerSearchResults);
 }
 
+//if no players found, generate alert, else populate <select id="player-to-confirm"> with players as options
+//next step: show alert or show player-confirmation
 function handlePlayerSearchResults(response){
     var jsonResponse = validateResponse(response);
     if(jsonResponse){
@@ -163,12 +172,16 @@ function handlePlayerSearchResults(response){
     }
 }
 
+//request to backend to add player with playerId, teamId
+//next step: go to afterAddPlayer()
 function addPlayer(){
     teamId = document.getElementById("team-to-confirm").value;
     playerId = document.getElementById("player-to-confirm").value;
     sendRequest("PUT", "/players/", {"player_id": playerId, "team_id": teamId}, afterAddPlayer);
 }
 
+//according to backend response, show appropriate alert
+//next step: show alert
 function afterAddPlayer(response){
     var jsonResponse = validateResponse(response);
     if(jsonResponse){
