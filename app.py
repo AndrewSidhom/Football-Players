@@ -42,7 +42,10 @@ def add_team(team_id):
     else:  # look up the team and attempt to add it
         api_response, api_calls_remaining = call_api('teams?id=' + str(team_id))
         status_code = api_response.status_code
-        if status_code != 200 or api_response.json()["errors"]:
+        json_response = api_response.json()
+        if status_code != 200 or json_response["errors"]:
+            if json_response["errors"]:
+                status_code = 502
             return make_response({"result": "Failed!",
                                   "detail": "The external API did not respond correctly.",
                                   "api_calls_remaining": api_calls_remaining}
@@ -63,7 +66,10 @@ def search_for_team():
     name = request.args.get("name")
     api_response, api_calls_remaining = call_api('teams?search=' + name)
     status_code = api_response.status_code
-    if status_code != 200 or api_response.json()["errors"]:
+    json_response = api_response.json()
+    if status_code != 200 or json_response["errors"]:
+        if json_response["errors"]:
+            status_code = 502
         return make_response({"result": "Failed!",
                               "detail": "The external API did not respond correctly.",
                               "api_calls_remaining": api_calls_remaining}
@@ -116,11 +122,16 @@ def add_player():
                                   "api_calls_remaining": response.get_json()["api_calls_remaining"]}
                                  , 200)
         else:  # team doesn't already exist in our db, look it up on API and attempt to add it
+            api_response, api_calls_remaining = call_api('teams/seasons?team=' + str(team_id_to_add))
+            current_season = max(api_response.json()['response'])
             api_response, api_calls_remaining = call_api('players?id=' + str(player_id_to_add)
-                                                         + 'team=' + str(team_id_to_add)
-                                                         + '&season=' + str(datetime.date.today().year))
+                                                         + '&team=' + str(team_id_to_add)
+                                                         + '&season=' + str(current_season))
             status_code = api_response.status_code
-            if status_code != 200 or api_response.json()["errors"]:
+            json_response = api_response.json()
+            if status_code != 200 or json_response["errors"]:
+                if json_response["errors"]:
+                    status_code = 502
                 return make_response({"result": "Failed!",
                                       "detail": "The external API did not respond correctly.",
                                       "api_calls_remaining": api_calls_remaining}
@@ -155,8 +166,12 @@ def add_player():
 def remove_player(player_id):
     player = Player.query.filter_by(id_=player_id).first()
     if player:
+        team = player.team
         db.session.delete(player)
         db.session.commit()
+        if not team.players:  # if the player's team has no other players
+            db.session.delete(team)
+            db.session.commit()
         if Player.query.filter_by(id_=player_id).first():
             return make_response({"result": "Failed!",
                                   "detail": "Could not remove the player due to a server-side issue.",
@@ -191,7 +206,10 @@ def search_for_player():
                              , 400)
     api_response, api_calls_remaining = call_api('players?team=' + str(team_id) + '&search=' + player_name)
     status_code = api_response.status_code
-    if status_code != 200 or api_response.json()["errors"]:
+    json_response = api_response.json()
+    if status_code != 200 or json_response["errors"]:
+        if json_response["errors"]:
+            status_code = 502
         return make_response({"result": "Failed!",
                               "detail": "The external API did not respond correctly.",
                               "api_calls_remaining": api_calls_remaining}
@@ -201,7 +219,6 @@ def search_for_player():
         players_list = []
         for result in json_data:
             player = {key: result['player'][key] for key in ("id", "name", "nationality")}
-            player["team_name"] = Team.query.filter_by(id_=team_id).first().name
             players_list.append(player)
         return make_response({"result": "Success!",
                               "detail": "-",

@@ -1,6 +1,9 @@
 TODO next steps in development:
-1. add_player: We're doing clubs only fixtures/teams. Figure out how to set the team's current season value depending on the time of year. Maybe season/league info is available on API about start and end date.
-2. Continue testing adding a player. Test all cases (not tested after refactoring by decoupling add_team from add_player that calls it.
+1. Everytime a Submit button is pressed, disable the previous ones
+2. Add function that wipes all form data, hides all elements. This function is called
+    - when an error or info message is displayed in validateResponse
+    - in AfterAddPlayer (when everything went right)
+    - When Add a Player is clicked (before showing first element of the form)
 
 TODO at some point:
 1. flask test library. can it issue http requests?
@@ -9,7 +12,7 @@ TODO at some point:
 2. player search: validate on client that it's 4+ characters for player and 3+ for team
 3. When we click twice on addPlayer button, the options in the datalist  get added, but the old HTML elements are still there, no?
 4. endpoints that need request params return error if nothing
-5. Currently add_team logic is embedded in add_player endpoint. Decouple? Question: How do we make sure we have no teams we're keeping track of that are devoid of players.
+5. At midnight each day: make sure we have no teams we're keeping track of that are devoid of players.
 6. Deal with api_calls_remaining info on front end. Flask global variable.
 
 TODO new features, improvements:

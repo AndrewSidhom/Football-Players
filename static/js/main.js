@@ -31,7 +31,7 @@ function sendRequest(method, requestUrl, data, responseHandler){
 
 function generateAlert(type, result, detail){
     if(type == "danger" || type == "success" || type=="info"){
-        return ['<div class="alert alert-' + type + ' alert-dismissible fade show" role="alert">',
+        return ['<div id="alert-top" class="alert alert-' + type + ' alert-dismissible fade show" role="alert">',
                 '<strong>' + result + '</strong>  ' + detail,
                 '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>',
                 '</div>'].join('\n');
@@ -63,7 +63,7 @@ function validateResponse(response){
     }
     else{
         contentNode.insertAdjacentHTML('beforebegin', alert);
-        window.location.href = "#content";
+        window.location.href = "#alert-top";
         return null;
     }
 }
@@ -75,12 +75,12 @@ function validateResponse(response){
 function afterRemovePlayer(response){
     var jsonResponse = validateResponse(response);
     if(jsonResponse){
-        playerId = jsonResponse.data.player_id;
-        playerNode = document.getElementById("player-id" + playerId);
+        var playerId = jsonResponse.data.player_id;
+        var playerNode = document.getElementById("player-id-" + playerId);
         playerNode.remove();
         var alert = generateAlert("success", jsonResponse.result, jsonResponse.detail);
         document.getElementById("content").insertAdjacentHTML('beforebegin', alert);
-        window.location.href = "#content";
+        window.location.href = "#alert-top";
     }
 }
 
@@ -148,14 +148,14 @@ function handlePlayerSearchResults(response){
         if(players === undefined || players.length == 0){
             var alert = generateAlert("danger", "Failed!", "There is no such player who plays for such a team");
             document.getElementById("content").insertAdjacentHTML('beforebegin', alert);
-            window.location.href = "#content";
+            window.location.href = "#alert-top";
         }
         else{
             selectNode = document.getElementById("player-to-confirm");
             players.forEach(function(player, index){
                 var optionNode = document.createElement("option");
                 optionNode.value = player.id;
-                optionNode.text = player.name + " (" + player.nationality + ", " + player.team_name + ")";
+                optionNode.text = player.name + " (" + player.nationality + ")";
                 selectNode.appendChild(optionNode);
             });
             document.getElementById("player-confirmation").style.display = "block";
@@ -165,9 +165,7 @@ function handlePlayerSearchResults(response){
 
 function addPlayer(){
     teamId = document.getElementById("team-to-confirm").value;
-    console.log("Team id to send" + document.getElementById("team-to-confirm").value);
     playerId = document.getElementById("player-to-confirm").value;
-    console.log("Player id to send" + document.getElementById("player-to-confirm").value);
     sendRequest("PUT", "/players/", {"player_id": playerId, "team_id": teamId}, afterAddPlayer);
 }
 
@@ -175,9 +173,12 @@ function afterAddPlayer(response){
     var jsonResponse = validateResponse(response);
     if(jsonResponse){
         var result = jsonResponse.result;
-        var detail = jsonResponse.detail + ' They\'ll appear in the below list upon <a href="/players">refreshing</a>.';
+        var detail = jsonResponse.detail;
+        if(result == "Success!"){
+            detail += ' They\'ll appear in the below list upon <a href="/players">refreshing</a>.';
+        }
         var alert = generateAlert("success", result, detail);
         document.getElementById("content").insertAdjacentHTML('beforebegin', alert);
-        window.location.href = "#content";
+        window.location.href = "#alert-top";
     }
 }
