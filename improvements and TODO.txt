@@ -1,9 +1,6 @@
 TODO next steps in development:
-1. Everytime a Submit button is pressed, disable the previous ones
-2. Add function that wipes all form data, hides all elements. This function is called
-    - when an error or info message is displayed in validateResponse
-    - in AfterAddPlayer (when everything went right)
-    - When Add a Player is clicked (before showing first element of the form)
+1. show more player infos when clicking on "i" and show if currently injured.
+2. get fixtures without much detail, display json list
 
 TODO at some point:
 1. flask test library. can it issue http requests?

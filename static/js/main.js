@@ -84,18 +84,24 @@ function afterRemovePlayer(response){
     }
 }
 
+//get all teams from database, populate <datalist id="teams"> with teams as options
+//next step: show team-search in search-section
 function showSearchSection(response){
+    resetSearchSection();
     var jsonResponse = validateResponse(response);
     if(jsonResponse){
         var allTeams = jsonResponse.data.teams;
+        var datalist = document.getElementById("teams");
         var datalistInnerHTML = "";
         for(team of allTeams){
             datalistInnerHTML += '<option data-value="' + team.id + '" value="' + team.name + ' (' + team.country + ')">\n';
         }
-        var datalist = document.getElementById("teams");
         datalist.innerHTML = datalistInnerHTML;
         document.getElementById("search-section").style.display = "block";
         document.getElementById("team-search").style.display = "block";
+    }
+    else{
+        resetSearchSection();
     }
 }
 
@@ -103,8 +109,11 @@ function showSearchSection(response){
 // next step: show player-search or go to handleTeamSearchResults()
 function afterTeamSelection(){
     var teamInputNode = document.getElementById("team-to-search-for");
-    teamInputNode.addAttribute("disabled", "");
-    var teamName = document.getElementById("team-to-search-for").value;
+
+    teamInputNode.setAttribute("disabled", "");
+    document.getElementById("team-to-search-for-submit").setAttribute("disabled", "");
+
+    var teamName = teamInputNode.value;
     var knownTeam = document.querySelector('#teams option[value="' + teamName + '"]'); //not null if user-entered team
                                                                                        //name is in the teams datalist
     if(knownTeam){
@@ -114,8 +123,7 @@ function afterTeamSelection(){
         optionNode.value = teamId;
         teamToConfirmNode.appendChild(optionNode)
         teamToConfirmNode.value = teamId;
-        var playerSearch = document.getElementById("player-search");
-        playerSearch.style.display = "block";
+        showPlayerSearch();
     }
     else{
         sendRequest("GET", "/teams/search?name=" + teamName, null, handleTeamSearchResults);
@@ -137,11 +145,23 @@ function handleTeamSearchResults(response){
         });
         document.getElementById("team-confirmation").style.display = "block";
     }
+    else{
+        resetSearchSection();
+    }
 }
 
-//request to backend to search for player with teamId, playerName
+//next step: show <div id="player-search">
+function showPlayerSearch(){
+    document.getElementById("team-to-confirm").setAttribute("disabled", "");
+    document.getElementById("team-to-confirm-submit").setAttribute("disabled", "");
+    document.getElementById("player-search").style.display = 'block'
+}
+
+//send request to backend to search for player with teamId, playerName
 //next step: go to handleSearchResults()
 function searchForPlayer(){
+    document.getElementById("player-to-search-for").setAttribute("disabled", "");
+    document.getElementById("player-to-search-for-submit").setAttribute("disabled", "");
     var teamId = document.getElementById("team-to-confirm").value;
     var playerName = document.getElementById("player-to-search-for").value;
     var url = "/players/search?player_name=" + playerName + "&team_id=" + teamId;
@@ -170,11 +190,16 @@ function handlePlayerSearchResults(response){
             document.getElementById("player-confirmation").style.display = "block";
         }
     }
+    else{
+        resetSearchSection();
+    }
 }
 
-//request to backend to add player with playerId, teamId
+//send request to backend to add player with playerId, teamId
 //next step: go to afterAddPlayer()
 function addPlayer(){
+    document.getElementById("player-to-confirm").setAttribute("disabled", "");
+    document.getElementById("player-to-confirm-submit").setAttribute("disabled", "");
     teamId = document.getElementById("team-to-confirm").value;
     playerId = document.getElementById("player-to-confirm").value;
     sendRequest("PUT", "/players/", {"player_id": playerId, "team_id": teamId}, afterAddPlayer);
@@ -194,4 +219,30 @@ function afterAddPlayer(response){
         document.getElementById("content").insertAdjacentHTML('beforebegin', alert);
         window.location.href = "#alert-top";
     }
+    resetSearchSection();
+}
+
+//wipes all inputs/selects/datalists, enables all elements, and hides them
+function resetSearchSection(){
+    document.getElementById("team-to-search-for").value = "";
+    document.getElementById("teams").innerHTML = "";
+    document.getElementById("team-to-confirm").innerHTML = "";
+    document.getElementById("player-to-search-for").value = "";
+    document.getElementById("player-to-confirm").innerHTML = "";
+
+    var disabledElementIds = ["team-to-search-for", "team-to-search-for-submit", "team-to-confirm"
+                               , "team-to-confirm-submit", "player-to-search-for", "player-to-search-for-submit"
+                               , "player-to-confirm", "player-to-confirm-submit"];
+    for(var id of disabledElementIds){
+        var elm = document.getElementById(id);
+        if(elm.hasAttribute("disabled")){
+            elm.removeAttribute("disabled");
+        }
+    }
+
+    document.getElementById("team-search").style.display = "none";
+    document.getElementById("team-confirmation").style.display = "none";
+    document.getElementById("player-search").style.display = "none";
+    document.getElementById("player-confirmation").style.display = "none";
+    document.getElementById("search-section").style.display = "none";
 }
