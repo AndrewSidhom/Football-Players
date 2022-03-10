@@ -1,6 +1,6 @@
 TODO next steps in development:
-1. show more player infos when clicking on "i" and show if currently injured.
-2. get fixtures without much detail, display json list
+1. separate utils from main.js, main.js becomes players.js, and we'll have matches_dashboard.js.
+2. show more player infos when clicking on "i" and show if currently injured.
 
 TODO at some point:
 1. flask test library. can it issue http requests?

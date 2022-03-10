@@ -8,5 +8,35 @@
 {% endblock %}
 
 {% block content %}
-
+<button type="button" class="btn btn-primary ms-3 mt-2 mb-2" onclick="window.location.href = '/fixtures/update'">Update Matches</button>
+<table id="fixtures" class="table">
+    <thead>
+        <tr>
+          <th scope="col">id</th>
+          <th scope="col">Date & Time</th>
+          <th scope="col">Home Team</th>
+          <th scope="col">Away Team</th>
+          <th scope="col">Competition</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for fixture in fixtures %}
+        <tr>
+            <th scope="row">{{ fixture.id }}</th>
+            <td>{{ fixture.date_and_time }}</td>
+            {% if fixture.my_home_team_id %}
+            <td class="table-active">{{ fixture.home_team_name }}</td>
+            {% else %}
+            <td>{{ fixture.home_team_name }}</td>
+            {% endif %}
+            {% if fixture.my_away_team_id %}
+            <td class="table-active">{{ fixture.away_team_name }}</td>
+            {% else %}
+            <td>{{ fixture.away_team_name }}</td>
+            {% endif %}
+            <td>{{ fixture.competition }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
 {% endblock %}

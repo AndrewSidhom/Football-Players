@@ -2,7 +2,7 @@ import datetime
 import requests
 
 from flask_sqlalchemy import SQLAlchemy
-from flask import Flask, render_template, request, make_response, url_for
+from flask import Flask, make_response, redirect, render_template, request, url_for
 from db import db
 from models import Player, Team, Fixture, Event
 from utilities import call_api
@@ -14,8 +14,60 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 
 @app.route("/")
-def home():
-    return render_template("matches_dashboard.html")
+@app.route("/fixtures/")
+def fixtures():
+    fixtures_list = []
+    for fixture in Fixture.query.all():
+        date_and_time = fixture.timestamp.strftime("%a %b %d, %Y")
+        fixtures_list.append({"id": fixture.id_, "my_home_team_id": fixture.my_home_team_id,
+                              "my_away_team_id": fixture.my_away_team_id, "home_team_name": fixture.home_team_name,
+                              "away_team_name": fixture.away_team_name, "date_and_time": date_and_time,
+                              "competition": fixture.competition})
+        fixtures_list.sort(key=lambda elm: elm["date_and_time"][3:])
+    return render_template("matches_dashboard.html", fixtures=fixtures_list)
+
+
+@app.route("/fixtures/update/")
+def update_fixtures():
+    for team in Team.query.all():
+        api_response, api_calls_remaining = call_api("teams/seasons?team=" + str(team.id_))
+        current_season = max(api_response.json()['response'])
+        today_minus_seven = datetime.date.today() + datetime.timedelta(days=-7)
+        today_plus_seven = datetime.date.today() + datetime.timedelta(days=7)
+        api_response, api_calls_remaining = call_api("fixtures?team=" + str(team.id_) + "&season=" + str(current_season)
+                                                     + "&from=" + today_minus_seven.strftime("%Y-%m-%d")
+                                                     + "&to=" + today_plus_seven.strftime("%Y-%m-%d"))
+        for fixture_json in api_response.json()['response']:
+            fixture_id = fixture_json['fixture']['id']
+            home_team_id = fixture_json['teams']['home']['id']
+            away_team_id = fixture_json['teams']['away']['id']
+            if home_team_id == team.id_:
+                is_home_team = True
+            else:
+                is_home_team = False
+            fixture = Fixture.query.filter_by(id_=fixture_id).first()
+            if fixture:  # if fixture already exists in database, we just add to it a relationship to my team
+                if is_home_team:
+                    fixture.my_home_team_id = home_team_id
+                else:
+                    fixture.my_away_team_id = away_team_id
+            else:  # fixture doesn't already exist in database
+                home_team_name = fixture_json['teams']['home']['name']
+                away_team_name = fixture_json['teams']['away']['name']
+                if is_home_team:
+                    my_home_team_id = home_team_id
+                    my_away_team_id = None
+                else:
+                    my_home_team_id = None
+                    my_away_team_id = away_team_id
+                fixture = Fixture(id_=fixture_id, my_home_team_id=my_home_team_id, my_away_team_id=my_away_team_id,
+                                  home_team_id=home_team_id, home_team_name=home_team_name,
+                                  away_team_id=away_team_id, away_team_name=away_team_name,
+                                  timestamp=datetime.datetime.fromtimestamp(fixture_json['fixture']['timestamp']),
+                                  competition=fixture_json['league']['name'])
+                db.session.add(fixture)
+        db.session.commit()
+    return redirect(url_for("fixtures"))
 
 
 #####################################################################################################################
@@ -25,9 +77,8 @@ def home():
 # get all teams from db, return json
 @app.route("/teams/", methods=["GET"])
 def teams():
-    all_teams = Team.query.all()
     teams_list = []
-    for team in all_teams:
+    for team in Team.query.all():
         teams_list.append({"id": team.id_, "name": team.name, "country": team.country})
     return make_response({"data": {"teams": teams_list}}, 200)
 
@@ -40,7 +91,7 @@ def add_team(team_id):
                               "api_calls_remaining": None}
                              , 200)
     else:  # look up the team and attempt to add it
-        api_response, api_calls_remaining = call_api('teams?id=' + str(team_id))
+        api_response, api_calls_remaining = call_api("teams?id=" + str(team_id))
         status_code = api_response.status_code
         json_response = api_response.json()
         if status_code != 200 or json_response["errors"]:
@@ -121,7 +172,7 @@ def add_player():
                                   "detail": "The player already existed in the database.",
                                   "api_calls_remaining": response.get_json()["api_calls_remaining"]}
                                  , 200)
-        else:  # team doesn't already exist in our db, look it up on API and attempt to add it
+        else:  # player doesn't already exist in our db, look it up on API and attempt to add it
             api_response, api_calls_remaining = call_api('teams/seasons?team=' + str(team_id_to_add))
             current_season = max(api_response.json()['response'])
             api_response, api_calls_remaining = call_api('players?id=' + str(player_id_to_add)

@@ -36,20 +36,28 @@ class Team(db.Model):
 
 class Fixture(db.Model):
     id_ = db.Column(db.Integer, primary_key=True)
-    home_team_id = db.Column(db.Integer, db.ForeignKey("team.id_"), nullable=False)
-    away_team_id = db.Column(db.Integer, db.ForeignKey("team.id_"), nullable=False)
-    team = db.relationship("Team", primaryjoin="or_(Fixture.home_team_id==Team.id_, Fixture.away_team_id==Team.id_)",
-                           backref=db.backref("fixtures", lazy=True))
-    datetime = db.Column(db.DateTime)
-    status = db.Column(db.String(25))  # "BeforeLineups , "LineupsIn", "FT"
+    my_home_team_id = db.Column(db.Integer, db.ForeignKey("team.id_"))
+    my_away_team_id = db.Column(db.Integer, db.ForeignKey("team.id_"))
+    teams = db.relationship("Team",
+                            primaryjoin="or_(Fixture.my_home_team_id==Team.id_, Fixture.my_away_team_id==Team.id_)",
+                            backref=db.backref("fixtures", lazy=True))
+    home_team_id = db.Column(db.Integer)
+    home_team_name = db.Column(db.String(50))
+    away_team_id = db.Column(db.Integer)
+    away_team_name = db.Column(db.String(50))
+    timestamp = db.Column(db.TIMESTAMP)
     competition = db.Column(db.String(50))
 
-    def __init__(self, id_, home_team_id, away_team_id, datetime, status, competition):
+    def __init__(self, id_, my_home_team_id, my_away_team_id, home_team_id, home_team_name,
+                 away_team_id, away_team_name, timestamp, competition):
         self.id_ = id_
+        self.my_home_team_id = my_home_team_id
+        self.my_away_team_id = my_away_team_id
         self.home_team_id = home_team_id
+        self.home_team_name = home_team_name
         self.away_team_id = away_team_id
-        self.datetime = datetime
-        self.status = status
+        self.away_team_name = away_team_name
+        self.timestamp = timestamp
         self.competition = competition
 
 
